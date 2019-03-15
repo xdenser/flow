@@ -22,6 +22,7 @@ import org.jsoup.parser.Parser;
 import org.jsoup.parser.Tag;
 import org.jsoup.select.Elements;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -35,7 +36,7 @@ import java.util.stream.Stream;
  * Builds the initial bootstrap page.
  *
  */
-class BootstrapPageBuilder {
+public class BootstrapPageBuilder {
 
     private static final CharSequence GWT_STAT_EVENTS_JS = "if (typeof window.__gwtStatsEvent != 'function') {"
                                                                + "window.Vaadin.Flow.gwtStatsEvents = [];"
@@ -70,39 +71,35 @@ class BootstrapPageBuilder {
      * @return A document with a page.
      */
     public Document buildFromContext(BootstrapContext context) {
-        Document document = new Document("");
-        DocumentType doctype = new DocumentType("html", "", "",
-            document.baseUri());
-        document.appendChild(doctype);
-        Element html = document.appendElement("html");
-        html.attr("lang", context.getUI().getLocale().getLanguage());
-        Element head = html.appendElement("head");
-        html.appendElement("body");
+        final Document document = this.createDocument(context);
+
+        final Map.Entry<Element, Element> headAndBody = this.appendHeadAndBodyElements(document, context);
+        final Element head = headAndBody.getKey();
+        final Element body = headAndBody.getValue();
 
         List<Element> dependenciesToInlineInBody = setupDocumentHead(head,
             context);
-        dependenciesToInlineInBody
-            .forEach(dependency -> document.body().appendChild(dependency));
-        setupDocumentBody(document);
+        dependenciesToInlineInBody.forEach(body::appendChild);
+        setupDocumentBody(body);
 
         document.outputSettings().prettyPrint(false);
 
         BootstrapUtils.getInlineTargets(context)
             .ifPresent(targets -> handleInlineTargets(context, head,
-                document.body(), targets));
+                body, targets));
 
         BootstrapUtils.getInitialPageSettings(context).ifPresent(
             initialPageSettings -> handleInitialPageSettings(context, head,
                 initialPageSettings));
 
         /* Append any theme elements to initial page. */
-        handleThemeContents(context, document);
+        handleThemeContents(context, head, body);
 
         if (!context.isProductionMode()) {
-            exportUsageStatistics(document);
+            exportUsageStatistics(body);
         }
 
-        setupPwa(document, context);
+        setupPwa(context, head, body);
 
         BootstrapPageResponse response = new BootstrapPageResponse(
             context.getRequest(), context.getSession(),
@@ -111,6 +108,34 @@ class BootstrapPageBuilder {
         context.getSession().getService().modifyBootstrapPage(response);
 
         return document;
+    }
+
+    /**
+     * Creates a new document (with document type html).
+     * Override this method if you are interested in creating documents other than html documents.
+     * @param context Bootstrap context.
+     * @return Document.
+     */
+    protected Document createDocument(BootstrapContext context) {
+        Document document = new Document("");
+        DocumentType doctype = new DocumentType("html", "", ""); //document.baseUri() as last parameter is not used
+        document.appendChild(doctype);
+        return document;
+    }
+
+    /**
+     * Appends head and body elements into the given document.
+     * Override this method if you do not want to create a full html page with {@code <html>} as the root element.
+     * @param document Document to create the root element in.
+     * @return Pair of elements: head and body.
+     */
+    // why is Map.Entry used here? because it is the only java class that features two elements of known type
+    protected Map.Entry<Element, Element> appendHeadAndBodyElements(Document document, BootstrapContext context) {
+        Element html = document.appendElement("html");
+        html.attr("lang", context.getUI().getLocale().getLanguage());
+        Element head = html.appendElement("head");
+        Element body = html.appendElement("body");
+        return new AbstractMap.SimpleImmutableEntry<>(head, body);
     }
 
     /**
@@ -260,7 +285,7 @@ class BootstrapPageBuilder {
         });
     }
 
-    private void setupPwa(Document document, BootstrapContext context) {
+    private void setupPwa(BootstrapContext context, Element head, Element body) {
         VaadinService vaadinService = context.getSession().getService();
         if (vaadinService == null) {
             return;
@@ -274,8 +299,6 @@ class BootstrapPageBuilder {
         PwaConfiguration config = registry.getPwaConfiguration();
 
         if (config.isEnabled()) {
-            // Add header injections
-            Element head = document.head();
 
             // Describe PWA capability for iOS devices
             head.appendElement(META_TAG)
@@ -309,7 +332,7 @@ class BootstrapPageBuilder {
             // add body injections
             if (registry.getPwaConfiguration().isInstallPromptEnabled()) {
                 // PWA Install prompt html/js
-                document.body().append(registry.getInstallPrompt());
+                body.append(registry.getInstallPrompt());
             }
         }
     }
@@ -414,8 +437,8 @@ class BootstrapPageBuilder {
         }
     }
 
-    private void setupDocumentBody(Document document) {
-        document.body().appendElement("noscript").append(
+    private void setupDocumentBody(Element body) {
+        body.appendElement("noscript").append(
             "You have to enable javascript in your browser to use this web site.");
     }
 
@@ -530,7 +553,7 @@ class BootstrapPageBuilder {
         return Optional.ofNullable(title);
     }
 
-    private void exportUsageStatistics(Document document) {
+    private void exportUsageStatistics(Element body) {
         String registerScript = UsageStatistics.getEntries().map(entry -> {
             String name = entry.getName();
             String version = entry.getVersion();
@@ -547,12 +570,12 @@ class BootstrapPageBuilder {
         }).collect(Collectors.joining("\n"));
 
         if (!registerScript.isEmpty()) {
-            document.body().appendElement(SCRIPT_TAG).text(registerScript);
+            body.appendElement(SCRIPT_TAG).text(registerScript);
         }
     }
 
     private void handleThemeContents(BootstrapContext context,
-        Document document) {
+        Element head, Element body) {
         BootstrapUtils.ThemeSettings themeSettings = BootstrapUtils.getThemeSettings(context);
 
         if (themeSettings == null) {
@@ -565,20 +588,19 @@ class BootstrapPageBuilder {
             themeContents.stream().map(
                 dependency -> createDependencyElement(context, dependency))
                 .forEach(element -> insertElements(element,
-                    document.head()::appendChild));
+                    head::appendChild));
         }
 
         JsonObject themeContent = themeSettings.getHeadInjectedContent();
         if (themeContent != null) {
             Element dependency = createDependencyElement(context, themeContent);
-            insertElements(dependency, document.head()::appendChild);
+            insertElements(dependency, head::appendChild);
         }
 
         if (themeSettings.getHtmlAttributes() != null) {
-            Element html = document.body().parent();
+            Element html = body.parent();
             assert html.tagName().equalsIgnoreCase("html");
-            themeSettings.getHtmlAttributes()
-                .forEach((key, value) -> html.attr(key, value));
+            themeSettings.getHtmlAttributes().forEach(html::attr);
         }
     }
 
