@@ -7,6 +7,7 @@ import elemental.json.Json;
 import elemental.json.JsonObject;
 
 import java.util.Locale;
+import java.util.function.Function;
 
 /**
  * Class for extracting parameters from {@link BootstrapContext}.
@@ -17,6 +18,12 @@ class ApplicationParameterBuilder {
     private static final String CAPTION = "caption";
     private static final String MESSAGE = "message";
     private static final String URL = "url";
+
+    private final Function<VaadinRequest, String> contextRootProvider;
+
+    ApplicationParameterBuilder(Function<VaadinRequest, String> contextRootProvider) {
+        this.contextRootProvider = contextRootProvider;
+    }
 
     public JsonObject buildFromContext(BootstrapContext context) {
         JsonObject appConfig = getApplicationParameters(context.getRequest(),
@@ -71,8 +78,7 @@ class ApplicationParameterBuilder {
             appConfig.put("sessExpMsg", sessExpMsg);
         }
 
-        String contextRoot = ServletHelper.getContextRootRelativePath(request)
-                                 + "/";
+        String contextRoot = this.contextRootProvider.apply(request);
         appConfig.put(ApplicationConstants.CONTEXT_ROOT_URL, contextRoot);
 
         if (!productionMode) {
