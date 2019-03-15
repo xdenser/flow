@@ -10,13 +10,14 @@ import java.lang.annotation.Annotation;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 
 /**
  * Provides context information for the bootstrap process.
  */
 public class BootstrapContext {
 
-    private static final ApplicationParameterBuilder PARAMETER_BUILDER = new ApplicationParameterBuilder();
+    private final ApplicationParameterBuilder applicationParameterBuilder;
 
     private final VaadinRequest request;
     private final VaadinResponse response;
@@ -40,13 +41,16 @@ public class BootstrapContext {
      *            the current session
      * @param ui
      *            the UI object
+     * @param contextRootProvider
+     *            function that determines what is the current context root
      */
     public BootstrapContext(VaadinRequest request,
-            VaadinResponse response, VaadinSession session, UI ui) {
+            VaadinResponse response, VaadinSession session, UI ui, Function<VaadinRequest, String> contextRootProvider) {
         this.request = request;
         this.response = response;
         this.session = session;
         this.ui = ui;
+        this.applicationParameterBuilder = new ApplicationParameterBuilder(contextRootProvider);
 
         pageConfigurationHolder = BootstrapUtils
                 .resolvePageConfigurationHolder(ui, request).orElse(null);
@@ -138,7 +142,7 @@ public class BootstrapContext {
      */
     public JsonObject getApplicationParameters() {
         if (applicationParameters == null) {
-            applicationParameters = PARAMETER_BUILDER.buildFromContext(this);
+            applicationParameters = applicationParameterBuilder.buildFromContext(this);
         }
 
         return applicationParameters;

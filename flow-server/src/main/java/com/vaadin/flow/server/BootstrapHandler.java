@@ -79,6 +79,7 @@ public class BootstrapHandler extends SynchronizedRequestHandler {
      * @param request Request.
      * @return Context root, with a trailing {@code /}.
      */
+    // todo consider moving this function into VaadinRequest interface (it may make more sense there)
     protected String getContextRootFromRequest(VaadinRequest request) {
         return ServletHelper.getContextRootRelativePath(request) + "/";
     }
@@ -95,7 +96,7 @@ public class BootstrapHandler extends SynchronizedRequestHandler {
         ui.setLocale(session.getLocale());
 
         BootstrapContext context = new BootstrapContext(request, response,
-                session, ui);
+                session, ui, this::getContextRootFromRequest);
 
         Optional<Push> push = context
                 .getPageConfigurationAnnotation(Push.class);

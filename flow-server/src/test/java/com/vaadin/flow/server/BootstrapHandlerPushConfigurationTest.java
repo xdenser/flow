@@ -1,17 +1,5 @@
 package com.vaadin.flow.server;
 
-import javax.servlet.http.HttpServletRequest;
-import java.io.IOException;
-
-import org.hamcrest.CoreMatchers;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mockito;
-import org.mockito.stubbing.Answer;
-
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.PushConfiguration;
 import com.vaadin.flow.component.Tag;
@@ -27,6 +15,17 @@ import com.vaadin.flow.server.communication.PushConnection;
 import com.vaadin.flow.server.communication.PushConnectionFactory;
 import com.vaadin.flow.shared.communication.PushMode;
 import com.vaadin.flow.shared.ui.Transport;
+import org.hamcrest.CoreMatchers;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mockito;
+import org.mockito.stubbing.Answer;
+
+import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
 
 import static java.util.Collections.enumeration;
 import static java.util.Collections.singletonList;
@@ -49,7 +48,7 @@ public class BootstrapHandlerPushConfigurationTest {
         mocks = new MockServletServiceSessionSetup();
         TestRouteRegistry routeRegistry = new TestRouteRegistry();
 
-        BootstrapHandler.clientEngineFile = () -> "foobar";
+        BootstrapClientEngine.CLIENT_ENGINE_SUPPLIER = () -> "foobar";
         session = mocks.getSession();
         service = mocks.getService();
         service.setRouteRegistry(routeRegistry);
@@ -84,7 +83,7 @@ public class BootstrapHandlerPushConfigurationTest {
     public void uiInitialization_pushNotConfiguredWhenAnnotationIsNotPresent() {
         BootstrapHandler bootstrapHandler = new BootstrapHandler();
         VaadinResponse response = mock(VaadinResponse.class);
-        final BootstrapHandler.BootstrapContext context = bootstrapHandler
+        final BootstrapContext context = bootstrapHandler
                 .createAndInitUI(BootstrapHandlerTest.TestUI.class,
                         createVaadinRequest(), response, session);
 
@@ -182,7 +181,7 @@ public class BootstrapHandlerPushConfigurationTest {
             routeConfiguration.setAnnotatedRoute(annotatedClazz);
         });
 
-        final BootstrapHandler.BootstrapContext context = bootstrapHandler
+        final BootstrapContext context = bootstrapHandler
                 .createAndInitUI(UI.class, createVaadinRequest(), response,
                         session);
         Push pushAnnotation = annotatedClazz.getAnnotation(Push.class);
