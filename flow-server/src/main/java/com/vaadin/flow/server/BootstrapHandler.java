@@ -44,7 +44,22 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  */
 public class BootstrapHandler extends SynchronizedRequestHandler {
 
-    private final BootstrapPageBuilder pageBuilder = new BootstrapPageBuilder();
+    private final BootstrapPageBuilder pageBuilder;
+
+    /**
+     * Constructs the handler using the default page builder.
+     */
+    public BootstrapHandler() {
+        this(new BootstrapPageBuilder());
+    }
+
+    /**
+     * Constructs the handler using specific page builder. Useful when the contents of the page are to be inserted elsewhere.
+     * @param pageBuilder A page builder to use.
+     */
+    protected BootstrapHandler(BootstrapPageBuilder pageBuilder) {
+        this.pageBuilder = pageBuilder;
+    }
 
     @Override
     public boolean synchronizedHandleRequest(VaadinSession session,
