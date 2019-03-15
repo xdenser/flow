@@ -15,25 +15,6 @@
  */
 package com.vaadin.flow.server;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.parser.Parser;
-
 import com.vaadin.flow.component.HasElement;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.dependency.HtmlImport;
@@ -53,14 +34,30 @@ import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.Router;
 import com.vaadin.flow.router.RouterLayout;
-import com.vaadin.flow.server.BootstrapHandler.BootstrapUriResolver;
 import com.vaadin.flow.shared.ui.Dependency;
 import com.vaadin.flow.shared.ui.LoadMode;
 import com.vaadin.flow.theme.AbstractTheme;
 import com.vaadin.flow.theme.ThemeDefinition;
-
 import elemental.json.Json;
 import elemental.json.JsonObject;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.parser.Parser;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Utility methods used by the BootstrapHandler.
@@ -110,7 +107,7 @@ class BootstrapUtils {
      * @return the content value string for viewport meta tag
      */
     static Optional<String> getViewportContent(
-            BootstrapHandler.BootstrapContext context) {
+            BootstrapContext context) {
         return context.getPageConfigurationAnnotation(Viewport.class)
                 .map(Viewport::value);
     }
@@ -127,7 +124,7 @@ class BootstrapUtils {
      *         meta tag
      */
     static Map<String, String> getMetaTargets(
-            BootstrapHandler.BootstrapContext context) {
+            BootstrapContext context) {
         List<Meta> metaAnnotations = context
                 .getPageConfigurationAnnotations(Meta.class);
         boolean illegalValue = false;
@@ -157,7 +154,7 @@ class BootstrapUtils {
      *         {@link PageConfigurator} found
      */
     static Optional<InitialPageSettings> getInitialPageSettings(
-            BootstrapHandler.BootstrapContext context) {
+            BootstrapContext context) {
         UI ui = context.getUI();
 
         Optional<PageConfigurator> pageConfigurator = ui.getChildren()
@@ -176,7 +173,7 @@ class BootstrapUtils {
     }
 
     private static InitialPageSettings createInitialPageSettingsObject(
-            BootstrapHandler.BootstrapContext context) {
+            BootstrapContext context) {
         UI ui = context.getUI();
         VaadinRequest request = context.getRequest();
         WebBrowser browser = context.getSession().getBrowser();
@@ -217,7 +214,7 @@ class BootstrapUtils {
      * @return the content value string for body size style element
      */
     static String getBodySizeContent(
-            BootstrapHandler.BootstrapContext context) {
+            BootstrapContext context) {
 
         Optional<BodySize> bodySize = context
                 .getPageConfigurationAnnotation(BodySize.class);
@@ -250,7 +247,7 @@ class BootstrapUtils {
      * @return the content value string for viewport meta tag
      */
     static Optional<InlineTargets> getInlineTargets(
-            BootstrapHandler.BootstrapContext context) {
+            BootstrapContext context) {
         List<Inline> inlineAnnotations = context
                 .getPageConfigurationAnnotations(Inline.class);
 
@@ -308,7 +305,7 @@ class BootstrapUtils {
     }
 
     static ThemeSettings getThemeSettings(
-            BootstrapHandler.BootstrapContext context) {
+            BootstrapContext context) {
         Optional<ThemeDefinition> themeDefinition = context.getTheme();
         if (themeDefinition.isPresent()) {
             return getThemeSettings(context, themeDefinition.get());
@@ -317,7 +314,7 @@ class BootstrapUtils {
     }
 
     private static ThemeSettings getThemeSettings(
-            BootstrapHandler.BootstrapContext context,
+            BootstrapContext context,
             ThemeDefinition themeDefinition) {
 
         ThemeSettings settings = new ThemeSettings();

@@ -15,9 +15,14 @@
  */
 package com.vaadin.flow.server;
 
-import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.Image;
+import com.vaadin.flow.server.startup.ApplicationRouteRegistry;
+import elemental.json.Json;
+import elemental.json.JsonArray;
+import elemental.json.JsonObject;
+
+import javax.imageio.ImageIO;
+import javax.servlet.ServletContext;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -31,15 +36,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import javax.imageio.ImageIO;
-import javax.servlet.ServletContext;
-
-import com.vaadin.flow.server.startup.ApplicationRouteRegistry;
-
-import elemental.json.Json;
-import elemental.json.JsonArray;
-import elemental.json.JsonObject;
 
 /**
  * Registry for PWA data.
@@ -331,7 +327,7 @@ public class PwaRegistry implements Serializable {
         PwaIcon largest = getIcons().stream().filter(PwaIcon::shouldBeCached)
                 .min((icon1, icon2) -> icon2.getWidth() - icon1.getWidth())
                 .orElse(null);
-        return BootstrapHandler.readResource("default-pwa-prompt.html")
+        return ResourceReader.forClass(this.getClass()).readResource("default-pwa-prompt.html")
                 .replace("%%%INSTALL%%%", "Install")
                 .replace("%%%LOGO_PATH%%%",
                         largest == null ? ""
