@@ -17,6 +17,7 @@ package com.vaadin.flow.server.communication;
 
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.webcomponent.WebComponentUI;
+import com.vaadin.flow.server.BootstrapContext;
 import com.vaadin.flow.server.BootstrapHandler;
 import com.vaadin.flow.server.VaadinRequest;
 import com.vaadin.flow.server.VaadinResponse;
