@@ -32,23 +32,34 @@
 
       connectedCallback() {
         super.connectedCallback();
+        
+        self = this;
+        
+        document.body.addEventListener('root-element', function(event) {
+            var rootId = event.detail;
+            var flowRoot;
+            if ( !rootId || rootId ==''){
+                flowRoot = document.body;
+            }
+            else {
+                flowRoot = document.getElementById(rootId);
+            }
+            if (!self.$.id) {
+                self._registerElement(flowRoot);
+              } else if (flowRoot && flowRoot.$server) {
+                  self.$server.reconnect();
+              }
 
-        let flowRoot = _RootElement_;
-        if (!this.$.id) {
-          this._registerElement();
-        } else if (flowRoot && flowRoot.$server) {
-          this.$server.reconnect();
-        }
-
-        console.log('connected', this);
+              console.log('connected', this);
+        });
+        
       }
-
-      _registerElement() {
+      
+      _registerElement(flowRoot) {
         this.$.id = "_TagCamel_-" + _TagCamel_.id++;
 
         // Needed to make Flow do lookup correctly
         const poller = () => {
-          let flowRoot = _RootElement_;
           if (flowRoot && flowRoot.$server) {
             flowRoot.$ = flowRoot.$ || {};
             flowRoot.$[this.$.id] = this;

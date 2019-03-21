@@ -29,6 +29,7 @@ import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Router;
 import com.vaadin.flow.server.VaadinRequest;
 import com.vaadin.flow.server.VaadinServlet;
+import com.vaadin.flow.server.VaadinSession;
 import com.vaadin.flow.server.webcomponent.WebComponentConfigurationRegistry;
 import com.vaadin.flow.theme.AbstractTheme;
 import com.vaadin.flow.theme.ThemeDefinition;
@@ -45,41 +46,50 @@ public class WebComponentUI extends UI {
     public void doInit(VaadinRequest request, int uiId) {
         super.doInit(request, uiId);
         assignLumoThemeIfAvailable();
+
+        VaadinSession session = getSession();
+        String uiElementId;
+        if (session.getConfiguration().getRootElementId().isEmpty()) {
+            uiElementId = "";
+        } else {
+            uiElementId = session.getConfiguration().getRootElementId();
+        }
+        getPage().executeJavaScript(
+                "document.body.dispatchEvent(new CustomEvent('root-element', { detail: '"
+                        + uiElementId + "' }))");
     }
 
     /**
-     * Connect a client side web component element with a server side {@link
-     * Component} that's added as a virtual child to the UI as the actual
+     * Connect a client side web component element with a server side
+     * {@link Component} that's added as a virtual child to the UI as the actual
      * relation of the elements is unknown.
      *
      * @param tag
-     *         web component tag
+     *            web component tag
      * @param webComponentElementId
-     *         client side id of the element
+     *            client side id of the element
      */
     @ClientCallable
     public void connectWebComponent(String tag, String webComponentElementId) {
-        Optional<WebComponentConfiguration<? extends Component>> webComponentConfiguration =
-                WebComponentConfigurationRegistry
+        Optional<WebComponentConfiguration<? extends Component>> webComponentConfiguration = WebComponentConfigurationRegistry
                 .getInstance(VaadinServlet.getCurrent().getServletContext())
                 .getConfiguration(tag);
 
         if (!webComponentConfiguration.isPresent()) {
-            LoggerFactory.getLogger(WebComponentUI.class)
-                    .warn("Received connect request for non existing WebComponent '{}'",
-                            tag);
+            LoggerFactory.getLogger(WebComponentUI.class).warn(
+                    "Received connect request for non existing WebComponent '{}'",
+                    tag);
             return;
         }
 
-        WebComponentBinding<?> binding =
-                webComponentConfiguration.get().createBinding(Instantiator.get(this));
+        WebComponentBinding<?> binding = webComponentConfiguration.get()
+                .createBinding(Instantiator.get(this));
 
         WebComponentWrapper wrapper = new WebComponentWrapper(tag, binding);
 
-        getElement().getStateProvider()
-                .appendVirtualChild(getElement().getNode(),
-                        wrapper.getElement(), NodeProperties.INJECT_BY_ID,
-                        webComponentElementId);
+        getElement().getStateProvider().appendVirtualChild(
+                getElement().getNode(), wrapper.getElement(),
+                NodeProperties.INJECT_BY_ID, webComponentElementId);
         wrapper.getElement().executeJavaScript("$0.serverConnected()");
     }
 

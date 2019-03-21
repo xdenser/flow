@@ -71,13 +71,13 @@ public class WebComponentGenerator {
      *            a vaadin request
      * @return generated web component html/JS to be served to the client
      */
-    public static String generateModule(String uiElement, String tag,
+    public static String generateModule(String tag,
             WebComponentConfiguration<? extends Component> webComponentConfiguration,
             VaadinRequest request) {
-        Set<PropertyData<?>> propertyDataSet =
-                webComponentConfiguration.getPropertyDataSet();
+        Set<PropertyData<?>> propertyDataSet = webComponentConfiguration
+                .getPropertyDataSet();
 
-        Map<String, String> replacements = getReplacementsMap(uiElement, tag,
+        Map<String, String> replacements = getReplacementsMap(tag,
                 propertyDataSet, getContextPath(request));
 
         String template = getTemplate();
@@ -88,8 +88,8 @@ public class WebComponentGenerator {
         return template;
     }
 
-    static Map<String, String> getReplacementsMap(String uiElement, String tag,
-                                                  Set<PropertyData<?>> propertyDataSet, String contextPath) {
+    static Map<String, String> getReplacementsMap(String tag,
+            Set<PropertyData<?>> propertyDataSet, String contextPath) {
         Map<String, String> replacements = new HashMap<>();
 
         replacements.put("TagDash", tag);
@@ -99,10 +99,7 @@ public class WebComponentGenerator {
         replacements.put("PropertyMethods", getPropertyMethods(
                 propertyDataSet.stream().map(PropertyData::getName)));
 
-        replacements.put("Properties",
-                getPropertyDefinitions(propertyDataSet));
-
-        replacements.put("RootElement", uiElement);
+        replacements.put("Properties", getPropertyDefinitions(propertyDataSet));
 
         replacements.put("servlet_context", contextPath);
 
@@ -120,7 +117,8 @@ public class WebComponentGenerator {
         return contextPath;
     }
 
-    private static String getPropertyDefinitions(Set<PropertyData<?>> properties) {
+    private static String getPropertyDefinitions(
+            Set<PropertyData<?>> properties) {
         JsonObject props = Json.createObject();
 
         for (PropertyData<?> property : properties) {
@@ -130,7 +128,8 @@ public class WebComponentGenerator {
         return props.toJson();
     }
 
-    private static JsonObject createPropertyDefinition(PropertyData<?> property) {
+    private static JsonObject createPropertyDefinition(
+            PropertyData<?> property) {
         JsonObject prop = Json.createObject();
 
         prop.put("type", property.getType().getSimpleName());
@@ -148,9 +147,9 @@ public class WebComponentGenerator {
             } else if (JsonValue.class.isAssignableFrom(property.getType())) {
                 prop.put(propertyValue, (JsonValue) property.getDefaultValue());
             } else {
-                throw new UnsupportedPropertyTypeException(String.format("%s " +
-                        "is not a currently supported type for a Property. " +
-                                "Please use %s instead.",
+                throw new UnsupportedPropertyTypeException(String.format("%s "
+                        + "is not a currently supported type for a Property. "
+                        + "Please use %s instead.",
                         property.getType().getSimpleName(),
                         JsonValue.class.getSimpleName()));
             }
