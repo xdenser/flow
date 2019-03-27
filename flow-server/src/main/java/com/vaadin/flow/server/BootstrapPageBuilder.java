@@ -24,6 +24,7 @@ import org.jsoup.select.Elements;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -170,7 +171,7 @@ public class BootstrapPageBuilder {
         return dependenciesToInlineInBody;
     }
 
-    private List<Element> inlineDependenciesInHead(Element head,
+    protected List<Element> inlineDependenciesInHead(Element head,
         BootstrapUriResolver uriResolver, LoadMode loadMode,
         JsonArray dependencies) {
         List<Element> dependenciesToInlineInBody = new ArrayList<>();
@@ -224,27 +225,27 @@ public class BootstrapPageBuilder {
         }
     }
 
-    private void setupCss(Element head, BootstrapContext context) {
-        Element styles = head.appendElement("style").attr("type",
-            CSS_TYPE_ATTRIBUTE_VALUE);
-        // Add any body style that is defined for the application using
-        // @BodySize
-        String bodySizeContent = BootstrapUtils.getBodySizeContent(context);
-        styles.appendText(bodySizeContent);
-        // Basic reconnect dialog style just to make it visible and outside of
-        // normal flow
-        styles.appendText(".v-reconnect-dialog {" //
+    /**
+     * Creates additional CSS styles to be appended to {@code style} markup.
+     * @param context Bootstrap context, if needed.
+     * @return A list of valid CSS styles.
+     */
+    protected List<String> createAdditionalCss(BootstrapContext context) {
+        return Arrays.asList(
+            // Basic reconnect dialog style just to make it visible and outside of
+            // normal flow
+            ".v-reconnect-dialog {" //
                               + "position: absolute;" //
                               + "top: 1em;" //
                               + "right: 1em;" //
                               + "border: 1px solid black;" //
                               + "padding: 1em;" //
                               + "z-index: 10000;" //
-                              + "}");
+                              + "}",
 
         // Basic system error dialog style just to make it visible and outside
         // of normal flow
-        styles.appendText(".v-system-error {" //
+        ".v-system-error {" //
                               + "color: red;" //
                               + "background: white;" //
                               + "position: absolute;" //
@@ -257,6 +258,26 @@ public class BootstrapPageBuilder {
                               + "}");
     }
 
+    /**
+     * Adds {@code style} tags to the head.
+     * @param head Head element.
+     * @param context Bootstrap context.
+     */
+    private void setupCss(Element head, BootstrapContext context) {
+        Element styles = head.appendElement("style").attr("type", CSS_TYPE_ATTRIBUTE_VALUE);
+        // Add any body style that is defined for the application using
+        // @BodySize
+        String bodySizeContent = BootstrapUtils.getBodySizeContent(context);
+        styles.appendText(bodySizeContent);
+
+        this.createAdditionalCss(context).forEach(styles::appendText);
+    }
+
+    /**
+     * Appends all {@code meta} and {@code title} elements to the head.
+     * @param head Head element to add things to.
+     * @param context Bootstrap context.
+     */
     private void setupMetaAndTitle(Element head,
         BootstrapContext context) {
         head.appendElement(META_TAG).attr("http-equiv", "Content-Type").attr(
