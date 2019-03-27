@@ -30,27 +30,38 @@ public class BootstrapContext {
     private JsonObject applicationParameters;
     private BootstrapUriResolver uriResolver;
 
-    /**
-     * Creates a new context instance using the given parameters.
-     *
-     * @param request
-     *            the request object
-     * @param response
-     *            the response object
-     * @param session
-     *            the current session
-     * @param ui
-     *            the UI object
-     * @param contextRootProvider
-     *            function that determines what is the current context root
-     */
     public BootstrapContext(VaadinRequest request,
-            VaadinResponse response, VaadinSession session, UI ui, Function<VaadinRequest, String> contextRootProvider) {
+        VaadinResponse response, VaadinSession session, UI ui,
+        Function<VaadinRequest, String> contextRootProvider) {
+        this(request, response, session, ui, contextRootProvider, (s) -> s.getConfiguration().getRootElementId());
+    }
+
+
+        /**
+         * Creates a new context instance using the given parameters.
+         *
+         * @param request
+         *            the request object
+         * @param response
+         *            the response object
+         * @param session
+         *            the current session
+         * @param ui
+         *            the UI object
+         * @param contextRootProvider
+         *            function that determines what is the current context root
+         * @param rootIdElementProvider
+         *            function that provides an id of the root element of UI
+         */
+    public BootstrapContext(VaadinRequest request,
+            VaadinResponse response, VaadinSession session, UI ui,
+            Function<VaadinRequest, String> contextRootProvider,
+            Function<VaadinSession, String> rootIdElementProvider) {
         this.request = request;
         this.response = response;
         this.session = session;
         this.ui = ui;
-        this.applicationParameterBuilder = new ApplicationParameterBuilder(contextRootProvider);
+        this.applicationParameterBuilder = new ApplicationParameterBuilder(contextRootProvider, rootIdElementProvider);
 
         pageConfigurationHolder = BootstrapUtils
                 .resolvePageConfigurationHolder(ui, request).orElse(null);

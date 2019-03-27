@@ -20,9 +20,11 @@ class ApplicationParameterBuilder {
     private static final String URL = "url";
 
     private final Function<VaadinRequest, String> contextRootProvider;
+    private final Function<VaadinSession, String> rootElementIdProvider;
 
-    ApplicationParameterBuilder(Function<VaadinRequest, String> contextRootProvider) {
+    ApplicationParameterBuilder(Function<VaadinRequest, String> contextRootProvider, Function<VaadinSession, String> rootElementIdProvider) {
         this.contextRootProvider = contextRootProvider;
+        this.rootElementIdProvider = rootElementIdProvider;
     }
 
     public JsonObject buildFromContext(BootstrapContext context) {
@@ -34,7 +36,7 @@ class ApplicationParameterBuilder {
         return appConfig;
     }
 
-    private JsonObject getApplicationParameters(VaadinRequest request,
+    protected JsonObject getApplicationParameters(VaadinRequest request,
         VaadinSession session) {
         DeploymentConfiguration deploymentConfiguration = session
                                                               .getConfiguration();
@@ -48,7 +50,7 @@ class ApplicationParameterBuilder {
         appConfig.put(ApplicationConstants.FRONTEND_URL_ES5,
             deploymentConfiguration.getEs5FrontendPrefix());
         appConfig.put(ApplicationConstants.UI_ELEMENT_ID,
-            deploymentConfiguration.getRootElementId());
+            this.rootElementIdProvider.apply(session));
 
         if (!productionMode) {
             JsonObject versionInfo = Json.createObject();

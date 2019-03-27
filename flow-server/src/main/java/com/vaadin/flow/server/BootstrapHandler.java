@@ -111,7 +111,7 @@ public class BootstrapHandler extends SynchronizedRequestHandler {
         ui.setLocale(session.getLocale());
 
         BootstrapContext context = new BootstrapContext(request, response,
-                session, ui, this::getContextRootFromRequest);
+                session, ui, this::getContextRootFromRequest, this::getApplicationRootElementId);
 
         Optional<Push> push = context
                 .getPageConfigurationAnnotation(Push.class);
@@ -128,6 +128,7 @@ public class BootstrapHandler extends SynchronizedRequestHandler {
         // Set thread local here so it is available in init
         UI.setCurrent(ui);
         ui.doInit(request, session.getNextUIid());
+
         session.addUI(ui);
 
         // After init and adding UI to session fire init listeners.
@@ -138,6 +139,15 @@ public class BootstrapHandler extends SynchronizedRequestHandler {
         }
 
         return context;
+    }
+
+    /**
+     * Returns application id. Override this to place the contents of the app into a predefined element.
+     * @param session Session.
+     * @return Id of an element to put the contents to.
+     */
+    protected String getApplicationRootElementId(VaadinSession session) {
+        return session.getConfiguration().getRootElementId();
     }
 
     protected void setupPushConnectionFactory(
