@@ -497,7 +497,7 @@ public class BootstrapPageBuilder {
         String result = getBootstrapJS();
         JsonObject appConfig = context.getApplicationParameters();
         appConfig.put(ApplicationConstants.UI_TAG,
-            context.getUI().getElement().getTag());
+            this.getUiTag(context));
 
         int indent = 0;
         if (!productionMode) {
@@ -531,6 +531,15 @@ public class BootstrapPageBuilder {
         // other patterns inside it (like {{CONFIG_JSON}})
         result = result.replace("{{INITIAL_UIDL}}", initialUIDLString);
         return result;
+    }
+
+    /**
+     * Returns the tag name of the UI element.
+     * @param context Context.
+     * @return Tag name.
+     */
+    protected String getUiTag(BootstrapContext context) {
+        return context.getUI().getElement().getTag();
     }
 
     /**
