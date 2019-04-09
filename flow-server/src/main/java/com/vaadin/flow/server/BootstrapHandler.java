@@ -61,6 +61,14 @@ public class BootstrapHandler extends SynchronizedRequestHandler {
         this.pageBuilder = pageBuilder;
     }
 
+    /**
+     * Returns the page builder used in this handler.
+     * @return The page builder.
+     */
+    protected final BootstrapPageBuilder getPageBuilder() {
+        return this.pageBuilder;
+    }
+
     @Override
     public boolean synchronizedHandleRequest(VaadinSession session,
             VaadinRequest request, VaadinResponse response) throws IOException {
@@ -131,14 +139,23 @@ public class BootstrapHandler extends SynchronizedRequestHandler {
 
         session.addUI(ui);
 
-        // After init and adding UI to session fire init listeners.
-        session.getService().fireUIInitListeners(ui);
+        this.fireUiInitListeners(ui, session);
 
         if (ui.getRouter() != null) {
             ui.getRouter().initializeUI(ui, request);
         }
 
         return context;
+    }
+
+    /**
+     * Notifies UI init listeners that the ui is ready.
+     * @param ui UI that was created.
+     * @param session Current session.
+     */
+    protected void fireUiInitListeners(UI ui, VaadinSession session) {
+        // After init and adding UI to session fire init listeners.
+        session.getService().fireUIInitListeners(ui);
     }
 
     /**
