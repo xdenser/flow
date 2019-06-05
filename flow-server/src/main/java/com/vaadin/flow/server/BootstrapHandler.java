@@ -153,7 +153,7 @@ public class BootstrapHandler extends SynchronizedRequestHandler {
     /**
      * Provides context information for the bootstrap process.
      */
-    protected static class BootstrapContext {
+    public static class BootstrapContext {
 
         private final VaadinRequest request;
         private final VaadinResponse response;
