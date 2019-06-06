@@ -473,7 +473,7 @@ public class BootstrapHandler extends SynchronizedRequestHandler {
      *
      * Do not subclass this, unless you really know why you are doing it.
      */
-    protected static final class BootstrapPageBuilder implements PageBuilder, Serializable {
+    protected static class BootstrapPageBuilder implements PageBuilder, Serializable {
 
         /**
          * Returns the bootstrap page for the given context.

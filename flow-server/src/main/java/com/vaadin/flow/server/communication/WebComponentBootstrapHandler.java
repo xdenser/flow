@@ -17,7 +17,6 @@ package com.vaadin.flow.server.communication;
 
 import com.vaadin.flow.component.PushConfiguration;
 import com.vaadin.flow.component.UI;
-import com.vaadin.flow.component.webcomponent.WebComponentUI;
 import com.vaadin.flow.server.BootstrapHandler;
 import com.vaadin.flow.server.ServletHelper;
 import com.vaadin.flow.server.VaadinRequest;
@@ -119,7 +118,7 @@ public class WebComponentBootstrapHandler extends BootstrapHandler {
     protected BootstrapContext createAndInitUI(
             Class<? extends UI> uiClass, VaadinRequest request,
             VaadinResponse response, VaadinSession session) {
-        BootstrapContext context = super.createAndInitUI(WebComponentUI.class,
+        BootstrapContext context = super.createAndInitUI(uiClass,
                 request, response, session);
         JsonObject config = context.getApplicationParameters();
 
