@@ -476,6 +476,43 @@ public class BootstrapHandler extends SynchronizedRequestHandler {
     protected static class BootstrapPageBuilder implements PageBuilder, Serializable {
 
         /**
+         * Constructs, but <strong>does not add</strong> a document {@code head} element. Can be overwritten in situations where that element should be something else.
+         * @param context Current {@link BootstrapContext}.
+         * @param document Document to create the head element in. That element is not added to the document.
+         * @return Created head element.
+         */
+        protected Element createDocumentHead(BootstrapContext context, Document document) {
+            return document.createElement("head");
+        }
+
+        /**
+         * Constructs, but <strong>does not add</strong> a document {@code body} element. Can be overwritten in situations where that element should be something else.
+         * @param context Current {@link BootstrapContext}.
+         * @param document Document to create the body element in. That element is not added to the document.
+         * @return Created body element.
+         */
+        protected Element createDocumentBody(BootstrapContext context, Document document) {
+            return document.createElement("body");
+        }
+
+        protected Element createDocumentRoot(BootstrapContext context, Document document) {
+            return document.createElement("html").attr("lang", context.getUI().getLocale().getLanguage());
+        }
+
+        protected Document createDocument(BootstrapContext context) {
+            Document document = new Document("");
+            DocumentType doctype = new DocumentType("html", "", "");
+            document.appendChild(doctype);
+            return document;
+        }
+
+        protected void appendDocumentElements(Document document, Element root, Element head, Element body) {
+            document.appendChild(root);
+            root.appendChild(head);
+            root.appendChild(body);
+        }
+
+        /**
          * Returns the bootstrap page for the given context.
          * @param context Context to generate bootstrap page for.
          * @return A document with the corresponding HTML page.
@@ -484,38 +521,36 @@ public class BootstrapHandler extends SynchronizedRequestHandler {
         public Document getBootstrapPage(BootstrapContext context) {
             DeploymentConfiguration config = context.getSession().getConfiguration();
 
-            Document document = new Document("");
-            DocumentType doctype = new DocumentType("html", "", "");
-            document.appendChild(doctype);
+            Document document = createDocument(context);
 
-            Element html = document.appendElement("html");
-            html.attr("lang", context.getUI().getLocale().getLanguage());
-            Element head = html.appendElement("head");
-            html.appendElement("body");
+            Element html = createDocumentRoot(context, document);
+            Element head = createDocumentHead(context, document);
+            Element body = createDocumentBody(context, document);
+            appendDocumentElements(document, html, head, body);
 
             List<Element> dependenciesToInlineInBody = setupDocumentHead(head, context);
-            dependenciesToInlineInBody.forEach(dependency -> document.body().appendChild(dependency));
-            setupDocumentBody(document);
+            dependenciesToInlineInBody.forEach(body::appendChild);
+            setupDocumentBody(body);
 
             document.outputSettings().prettyPrint(false);
 
-            BootstrapUtils.getInlineTargets(context).ifPresent(targets -> handleInlineTargets(context, head, document.body(), targets));
+            BootstrapUtils.getInlineTargets(context).ifPresent(targets -> handleInlineTargets(context, head, body, targets));
 
             BootstrapUtils.getInitialPageSettings(context).ifPresent(initialPageSettings -> handleInitialPageSettings(context, head, initialPageSettings));
 
             if (config.isBowerMode()) {
                 /* Append any theme elements to initial page. */
-                handleThemeContents(context, document);
+                handleThemeContents(context, html, head, body);
             }
 
             if (!config.isProductionMode()) {
-                exportUsageStatistics(document);
+                exportUsageStatistics(body);
             }
 
-            setupPwa(document, context);
+            setupPwa(context, head, body);
 
             if (!config.isBowerMode() && !config.isProductionMode()) {
-                checkWebpackStatus(document);
+                checkWebpackStatus(body);
             }
 
             BootstrapPageResponse response = new BootstrapPageResponse(context.getRequest(), context.getSession(), context.getResponse(), document, context.getUI(),
@@ -529,18 +564,18 @@ public class BootstrapHandler extends SynchronizedRequestHandler {
             return clientEngineFile.get();
         }
 
-        private void checkWebpackStatus(Document document) {
+        private void checkWebpackStatus(Element body) {
             DevModeHandler devMode = DevModeHandler.getDevModeHandler();
             if (devMode != null) {
                 String errorMsg = devMode.getFailedOutput();
                 if (errorMsg != null) {
-                    document.body().appendChild(
+                    body.appendChild(
                         new Element(Tag.valueOf("div"), "").attr("class", "v-system-error").html("<h3>Webpack Error</h3><pre>" + errorMsg + "</pre>"));
                 }
             }
         }
 
-        private void exportUsageStatistics(Document document) {
+        private void exportUsageStatistics(Element body) {
             String registerScript = UsageStatistics.getEntries().map(entry -> {
                 String name = entry.getName();
                 String version = entry.getVersion();
@@ -557,11 +592,11 @@ public class BootstrapHandler extends SynchronizedRequestHandler {
             }).collect(Collectors.joining("\n"));
 
             if (!registerScript.isEmpty()) {
-                document.body().appendElement(SCRIPT_TAG).text(registerScript);
+                body.appendElement(SCRIPT_TAG).text(registerScript);
             }
         }
 
-        private void handleThemeContents(BootstrapContext context, Document document) {
+        private void handleThemeContents(BootstrapContext context, Element root, Element head, Element body) {
             ThemeSettings themeSettings = BootstrapUtils.getThemeSettings(context);
 
             if (themeSettings == null) {
@@ -572,19 +607,19 @@ public class BootstrapHandler extends SynchronizedRequestHandler {
             List<JsonObject> themeContents = themeSettings.getHeadContents();
             if (themeContents != null) {
                 themeContents.stream().map(dependency -> createDependencyElement(context, dependency))
-                    .forEach(element -> insertElements(element, document.head()::appendChild));
+                    .forEach(element -> insertElements(element, head::appendChild));
             }
 
             JsonObject themeContent = themeSettings.getHeadInjectedContent();
             if (themeContent != null) {
                 Element dependency = createDependencyElement(context, themeContent);
-                insertElements(dependency, document.head()::appendChild);
+                insertElements(dependency, head::appendChild);
             }
 
             if (themeSettings.getHtmlAttributes() != null) {
-                Element html = document.body().parent();
-                assert "html".equalsIgnoreCase(html.tagName());
-                themeSettings.getHtmlAttributes().forEach(html::attr);
+                // cannot do this assertion because of non-servlets deployment which may be elsewhere than in <html>
+                // assert "html".equalsIgnoreCase(html.tagName());
+                themeSettings.getHtmlAttributes().forEach(root::attr);
             }
         }
 
@@ -858,7 +893,7 @@ public class BootstrapHandler extends SynchronizedRequestHandler {
             });
         }
 
-        private void setupPwa(Document document, BootstrapContext context) {
+        private void setupPwa(BootstrapContext context, Element head, Element body) {
             VaadinService vaadinService = context.getSession().getService();
             if (vaadinService == null) {
                 return;
@@ -872,8 +907,6 @@ public class BootstrapHandler extends SynchronizedRequestHandler {
             PwaConfiguration config = registry.getPwaConfiguration();
 
             if (config.isEnabled()) {
-                // Add header injections
-                Element head = document.head();
 
                 // Describe PWA capability for iOS devices
                 head.appendElement(META_TAG).attr("name", "apple-mobile-web-app-capable").attr(CONTENT_ATTRIBUTE, "yes");
@@ -897,7 +930,7 @@ public class BootstrapHandler extends SynchronizedRequestHandler {
                 // add body injections
                 if (registry.getPwaConfiguration().isInstallPromptEnabled()) {
                     // PWA Install prompt html/js
-                    document.body().append(registry.getInstallPrompt());
+                    body.append(registry.getInstallPrompt());
                 }
             }
         }
@@ -1002,8 +1035,8 @@ public class BootstrapHandler extends SynchronizedRequestHandler {
             return cssElement;
         }
 
-        private void setupDocumentBody(Document document) {
-            document.body().appendElement("noscript").append("You have to enable javascript in your browser to use this web site.");
+        private void setupDocumentBody(Element body) {
+            body.appendElement("noscript").append("You have to enable javascript in your browser to use this web site.");
         }
 
         private Element getPushScript(BootstrapContext context) {
@@ -1038,11 +1071,21 @@ public class BootstrapHandler extends SynchronizedRequestHandler {
             return BOOTSTRAP_JS;
         }
 
+        /**
+         * Calculates the tag name of the UI element for given context.
+         * Useful when non-servlet deployments render UI elements other than {@code body}.
+         * @param context Current {@link BootstrapContext}.
+         * @return A non-null tag name.
+         */
+        protected String getUiElementTagName(BootstrapContext context) {
+            return context.getUI().getElement().getTag();
+        }
+
         private String getBootstrapJS(JsonValue initialUIDL, BootstrapContext context) {
             boolean productionMode = context.getSession().getConfiguration().isProductionMode();
             String result = getBootstrapJS();
             JsonObject appConfig = context.getApplicationParameters();
-            appConfig.put(ApplicationConstants.UI_TAG, context.getUI().getElement().getTag());
+            appConfig.put(ApplicationConstants.UI_TAG, getUiElementTagName(context));
 
             int indent = 0;
             if (!productionMode) {
