@@ -16,6 +16,8 @@
 
 package com.vaadin.flow.server;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -66,6 +68,13 @@ public class DefaultDeploymentConfiguration
             + "this is handled by the 'prepare-frontend' goal. To use "
             + "compatibility mode, add the 'flow-server-compatibility-mode' "
             + "dependency.";
+
+    /**
+     * If present on the classpath, start in compatibility mode.
+     */
+    public static final String COMPATIBILITY_MODE_MARKER_FILE =
+            "vaadin.compatibilityMode";
+
     /**
      * Default value for {@link #getHeartbeatInterval()} = {@value} .
      */
@@ -264,8 +273,20 @@ public class DefaultDeploymentConfiguration
             compatibilityMode = getBooleanProperty(
                     Constants.SERVLET_PARAMETER_COMPATIBILITY_MODE, false);
         } else {
-            // neither parameter given -> throw exception
-            throw new IllegalStateException(ERROR_COMPATIBILITY_MODE_UNSET);
+            // Spring Boot application may not honor web-fragment.xml, so
+            // check for presence of marker file
+            InputStream is = getClass().getClassLoader().getResourceAsStream(
+                    "META-INF/" + COMPATIBILITY_MODE_MARKER_FILE);
+            if (is != null) {
+                try {
+                    is.close();
+                } catch (IOException e) {
+                    // ignore IOE
+                }
+                compatibilityMode = true;
+            } else {
+                throw new IllegalStateException(ERROR_COMPATIBILITY_MODE_UNSET);
+            }
         }
         if (compatibilityMode && loggWarning) {
             getLogger().warn(WARNING_COMPATIBILITY_MODE);
