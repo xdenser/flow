@@ -42,7 +42,6 @@ import com.vaadin.flow.component.dependency.NpmPackage;
 import com.vaadin.flow.internal.ReflectTools;
 import com.vaadin.flow.router.HasErrorParameter;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.server.ApplicationTheme;
 import com.vaadin.flow.server.UIInitListener;
 import com.vaadin.flow.server.VaadinServiceInitListener;
 import com.vaadin.flow.theme.AbstractTheme;
@@ -64,7 +63,6 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
     private AbstractTheme themeInstance;
     private final HashMap<String, String> packages = new HashMap<>();
     private final Set<String> visited = new HashSet<>();
-    private String applicationTheme;
 
     /**
      * Default Constructor.
@@ -102,7 +100,6 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
             }
             computeComponentTheme();
             computePackages();
-            computeApplicationTheme();
             long ms = (System.nanoTime() - start) / 1000000;
             log().info("Visited {} classes. Took {} ms.", visited.size(), ms);
         } catch (ClassNotFoundException | InstantiationException
@@ -270,13 +267,13 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
                 visitClass(endPoint.getLayout(), endPoint, false);
             }
             if (endPoint.getTheme() != null) {
-                visitClass(endPoint.getTheme().getName(), endPoint, true);
+                visitClass(endPoint.getTheme().getThemeName(), endPoint, true);
             }
         }
 
         Set<ThemeData> themes = endPoints.values().stream()
                 // consider only endPoints with theme information
-                .filter(data -> data.getTheme().getName() != null
+                .filter(data -> data.getTheme().getThemeName() != null
                         || data.getTheme().isNotheme())
                 .map(EndPointData::getTheme)
                 // Remove duplicates by returning a set
@@ -284,12 +281,12 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
 
         if (themes.size() > 1) {
             String names = endPoints.values().stream()
-                    .filter(data -> data.getTheme().getName() != null
+                    .filter(data -> data.getTheme().getThemeName() != null
                             || data.getTheme().isNotheme())
                     .map(data -> "found '"
                             + (data.getTheme().isNotheme()
                                     ? NoTheme.class.getName()
-                                    : data.getTheme().getName())
+                                    : data.getTheme().getThemeName())
                             + "' in '" + data.getName() + "'")
                     .collect(Collectors.joining("\n      "));
             throw new IllegalStateException(
@@ -299,6 +296,7 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
 
         Class<? extends AbstractTheme> theme = null;
         String variant = "";
+        String themeName = "";
         if (themes.isEmpty()) {
             theme = getDefaultTheme();
         } else {
@@ -306,14 +304,15 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
             ThemeData themeData = themes.iterator().next();
             if (!themeData.isNotheme()) {
                 variant = themeData.getVariant();
-                theme = getFinder().loadClass(themeData.getName());
+                theme = getFinder().loadClass(themeData.getThemeBaseClass());
+                themeName = themeData.getThemeName();
             }
 
         }
 
         // theme could be null when lumo is not found or when a NoTheme found
         if (theme != null) {
-            themeDefinition = new ThemeDefinition(theme, variant);
+            themeDefinition = new ThemeDefinition(theme, variant, themeName);
             themeInstance = new ThemeWrapper(theme);
         }
     }
@@ -375,28 +374,6 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
 
     private Logger log() {
         return LoggerFactory.getLogger(this.getClass());
-    }
-
-    private void computeApplicationTheme()
-            throws ClassNotFoundException, IOException {
-        FrontendAnnotatedClassVisitor applicationThemeVisitor = new FrontendAnnotatedClassVisitor(
-                getFinder(), ApplicationTheme.class.getName());
-
-        for (Class<?> component : getFinder()
-                .getAnnotatedClasses(ApplicationTheme.class.getName())) {
-            applicationThemeVisitor.visitClass(component.getName());
-        }
-
-        Set<String> applicationThemes = applicationThemeVisitor
-                .getValues(VALUE);
-        if (applicationThemes.isEmpty()) {
-            this.applicationTheme = null;
-        } else if (applicationThemes.size() > 1) {
-            throw new IllegalArgumentException(
-                    "Can't have multiple design systems");
-        } else {
-            this.applicationTheme = applicationThemes.iterator().next();
-        }
     }
 
     /**
@@ -535,8 +512,4 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
         return endPoints.toString();
     }
 
-    @Override
-    public String getApplicationTheme() {
-        return applicationTheme;
-    }
 }
