@@ -252,8 +252,6 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
             }
             this.appShellConfigurator = appShell;
         }
-        LoggerFactory.getLogger(getClass()).error("appShellConfigurator: " + appShellConfigurator);
-
     }
 
     private void collectEndpoints(Class<?> entry) throws IOException {
@@ -287,9 +285,7 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
         if (appShellConfigurator != null) {
             // @Theme can (and should be) set on AppShellConfigurator
             appShellData = new EndPointData(appShellConfigurator);
-            LoggerFactory.getLogger(getClass()).error("visiting " + appShellConfigurator.getName());
             visitClass(appShellConfigurator.getName(), appShellData, true);
-            LoggerFactory.getLogger(getClass()).error("appShellDatA: " + appShellData);
         }
 
         Stream<EndPointData> candidates = endPoints.values().stream();
@@ -336,7 +332,6 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
                     themeClass = LUMO;
                 }
                 theme = getFinder().loadClass(themeClass);
-                LoggerFactory.getLogger(getClass()).error("Theme name: " + themeName);
                 themeName = themeData.getThemeName();
             }
 
