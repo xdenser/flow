@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import net.bytebuddy.jar.asm.ClassReader;
 import org.slf4j.Logger;
@@ -39,6 +40,7 @@ import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.WebComponentExporter;
 import com.vaadin.flow.component.WebComponentExporterFactory;
 import com.vaadin.flow.component.dependency.NpmPackage;
+import com.vaadin.flow.component.page.AppShellConfigurator;
 import com.vaadin.flow.internal.ReflectTools;
 import com.vaadin.flow.router.HasErrorParameter;
 import com.vaadin.flow.router.Route;
@@ -46,6 +48,7 @@ import com.vaadin.flow.server.UIInitListener;
 import com.vaadin.flow.server.VaadinServiceInitListener;
 import com.vaadin.flow.theme.AbstractTheme;
 import com.vaadin.flow.theme.NoTheme;
+import com.vaadin.flow.theme.Theme;
 import com.vaadin.flow.theme.ThemeDefinition;
 
 import static com.vaadin.flow.server.frontend.scanner.FrontendClassVisitor.VALUE;
@@ -63,6 +66,7 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
     private AbstractTheme themeInstance;
     private final HashMap<String, String> packages = new HashMap<>();
     private final Set<String> visited = new HashSet<>();
+    private Class<?> appShellConfigurator;
 
     /**
      * Default Constructor.
@@ -93,7 +97,7 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
                 "Scanning classes to find frontend configurations and dependencies...");
         long start = System.nanoTime();
         try {
-            computeEndpoints();
+            computeEndpointsAndAppShell();
             if (generateEmbeddableWebComponents) {
                 computeExporterEndpoints(WebComponentExporter.class);
                 computeExporterEndpoints(WebComponentExporterFactory.class);
@@ -217,7 +221,7 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
      * @throws ClassNotFoundException
      * @throws IOException
      */
-    private void computeEndpoints() throws ClassNotFoundException, IOException {
+    private void computeEndpointsAndAppShell() throws ClassNotFoundException, IOException {
         // Because of different classLoaders we need compare against class
         // references loaded by the specific class finder loader
         Class<? extends Annotation> routeClass = getFinder()
@@ -240,6 +244,16 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
                 getFinder().loadClass(HasErrorParameter.class.getName()))) {
             collectEndpoints(errorParameters);
         }
+        for (Class<?> appShell : getFinder()
+                .getSubTypesOf(getFinder().loadClass(AppShellConfigurator.class.getName()))) {
+            if (this.appShellConfigurator != null) {
+                throw new IllegalStateException("Only one class can implement " + AppShellConfigurator.class.getName()
+                        + ". Found " + this.appShellConfigurator.getName() + " and " + appShell.getName());
+            }
+            this.appShellConfigurator = appShell;
+        }
+        LoggerFactory.getLogger(getClass()).error("appShellConfigurator: " + appShellConfigurator);
+
     }
 
     private void collectEndpoints(Class<?> entry) throws IOException {
@@ -256,9 +270,9 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
      * If no theme is found and the application has endpoints, it uses lumo if
      * found in the class-path
      */
-    private void computeTheme() throws ClassNotFoundException,
-            InstantiationException, IllegalAccessException, IOException {
-
+    private void computeTheme()
+            throws ClassNotFoundException, InstantiationException, IllegalAccessException, IOException {
+        EndPointData appShellData = null;
         // Re-visit theme related classes, because they might be skipped
         // when they where already added to the visited list during other
         // entry-point visits
@@ -267,13 +281,26 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
                 visitClass(endPoint.getLayout(), endPoint, false);
             }
             if (endPoint.getTheme() != null) {
-                visitClass(endPoint.getTheme().getThemeName(), endPoint, true);
+                visitClass(endPoint.getTheme().getThemeClass(), endPoint, true);
             }
         }
+        if (appShellConfigurator != null) {
+            // @Theme can (and should be) set on AppShellConfigurator
+            appShellData = new EndPointData(appShellConfigurator);
+            LoggerFactory.getLogger(getClass()).error("visiting " + appShellConfigurator.getName());
+            visitClass(appShellConfigurator.getName(), appShellData, true);
+            LoggerFactory.getLogger(getClass()).error("appShellDatA: " + appShellData);
+        }
 
-        Set<ThemeData> themes = endPoints.values().stream()
+        Stream<EndPointData> candidates = endPoints.values().stream();
+
+        if (appShellData != null) {
+            candidates = Stream.concat(candidates, Stream.of(appShellData));
+        }
+
+        Set<ThemeData> themes = candidates
                 // consider only endPoints with theme information
-                .filter(data -> data.getTheme().getThemeName() != null
+                .filter(data -> data.getTheme().getThemeClass() != null || data.getTheme().getThemeName() != null
                         || data.getTheme().isNotheme())
                 .map(EndPointData::getTheme)
                 // Remove duplicates by returning a set
@@ -281,7 +308,7 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
 
         if (themes.size() > 1) {
             String names = endPoints.values().stream()
-                    .filter(data -> data.getTheme().getThemeName() != null
+                    .filter(data -> data.getTheme().getThemeClass() != null || data.getTheme().getThemeName() != null
                             || data.getTheme().isNotheme())
                     .map(data -> "found '"
                             + (data.getTheme().isNotheme()
@@ -304,7 +331,12 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
             ThemeData themeData = themes.iterator().next();
             if (!themeData.isNotheme()) {
                 variant = themeData.getVariant();
-                theme = getFinder().loadClass(themeData.getThemeClass());
+                String themeClass = themeData.getThemeClass();
+                if (themeClass == null) {
+                    themeClass = LUMO;
+                }
+                theme = getFinder().loadClass(themeClass);
+                LoggerFactory.getLogger(getClass()).error("Theme name: " + themeName);
                 themeName = themeData.getThemeName();
             }
 
