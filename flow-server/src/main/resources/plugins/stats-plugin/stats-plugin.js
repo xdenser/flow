@@ -1,5 +1,28 @@
+/*
+ * Copyright 2000-2020 Vaadin Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
 const fs = require('fs');
 
+/**
+ * This plugin handles minimization of the stats.json file to only contain required info to keep
+ * the file as small as possible.
+ *
+ * In production mode the stats.json is written to the file system, in dev mode the json is returned to
+ * the webpack callback function.
+ */
 class StatsPlugin {
 
     constructor(options) {

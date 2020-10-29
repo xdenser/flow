@@ -42,6 +42,7 @@ import com.vaadin.flow.server.frontend.scanner.ClassFinder;
 import com.vaadin.flow.shared.util.SharedUtil;
 
 import elemental.json.Json;
+import elemental.json.JsonArray;
 import elemental.json.JsonObject;
 import static com.vaadin.flow.server.frontend.FrontendUtils.FLOW_NPM_PACKAGE_NAME;
 import static com.vaadin.flow.server.frontend.FrontendUtils.commandToString;
@@ -132,8 +133,8 @@ public class TaskRunNpmInstall implements FallibleCommand {
 
         }
         try {
-            generatePluginFiles("stats-plugin", new FrontendVersion("1.0.0"));
-            generatePluginFiles("application-theme-plugin", new FrontendVersion("1.0.0"));
+            generatePluginFiles("stats-plugin");
+            generatePluginFiles("application-theme-plugin");
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -143,40 +144,59 @@ public class TaskRunNpmInstall implements FallibleCommand {
         return this.getClass().getClassLoader().getResource(resource);
     }
 
-    private void generatePluginFiles(String pluginName, FrontendVersion pluginVersion)
+    private void generatePluginFiles(String pluginName)
         throws IOException {
-        File pluginFolder = new File(packageUpdater.nodeModulesFolder,
+        File pluginTargetFolder = new File(packageUpdater.nodeModulesFolder,
             "@vaadin/" + pluginName);
-        if (pluginFolder.exists() && new File(pluginFolder, "package.json")
-            .exists()) {
+
+        final String pluginFolder = "plugins/" + pluginName;
+        final JsonObject json = getPluginPackageJson(pluginFolder);
+        if (json == null) {
+            packageUpdater.log()
+                .error("Couldn't locate files for plugin '{}'", pluginName);
+            return;
+        }
+
+        if (pluginTargetFolder.exists() && new File(pluginTargetFolder,
+            "package.json").exists()) {
             String packageFile = FileUtils
-                .readFileToString(new File(pluginFolder, "package.json"),
+                .readFileToString(new File(pluginTargetFolder, "package.json"),
                     StandardCharsets.UTF_8);
             final FrontendVersion packageVersion = new FrontendVersion(
                 Json.parse(packageFile).getString("version"));
+            FrontendVersion pluginVersion = new FrontendVersion(json.getString("version"));
             if (packageVersion.isEqualTo(pluginVersion)) {
                 packageUpdater.log().debug(
-                    "Skiping install of {} for version {} already installed",
+                    "Skipping install of {} for version {} already installed",
                     pluginName, pluginVersion.getFullVersion());
                 return;
             }
         }
-        FileUtils.forceMkdir(pluginFolder);
-
-        FileUtils.copyURLToFile( getUrlResource(pluginName + ".js"), new File(pluginFolder, pluginName + ".js"));
-
-        FileUtils.copyURLToFile(
-            getUrlResource("plugin-package-json.template"),
-            new File(pluginFolder, "package.json"));
-
-        String packageFile = FileUtils.readFileToString(new File(pluginFolder, "package.json"), StandardCharsets.UTF_8);
-
-        packageFile = packageFile.replaceAll("\\[plugin\\-name\\]", pluginName);
-        packageFile = packageFile.replaceAll("\\[plugin\\-version\\]", pluginVersion.getFullVersion());
-
-        FileUtils.writeStringToFile(new File(pluginFolder, "package.json"), packageFile,
-            StandardCharsets.UTF_8);
+        FileUtils.forceMkdir(pluginTargetFolder);
+        final JsonArray files = json.getArray("files");
+        for (int i = 0; i < files.length(); i++) {
+            final String string = files.getString(i);
+            FileUtils.copyURLToFile(getUrlResource(pluginFolder + "/" + string),
+                new File(pluginTargetFolder, string));
+        }
+        FileUtils.copyURLToFile(getUrlResource(pluginFolder + "/package.json"),
+            new File(pluginTargetFolder, "package.json"));
     }
+
+    private JsonObject getPluginPackageJson(String pluginFolder)
+        throws IOException {
+        File pluginPackageJson = new File(getUrlResource(pluginFolder + "/package.json").getFile());
+        String jsonString;
+        if (!pluginPackageJson.exists()) {
+            jsonString = FrontendUtils.streamToString(this.getClass().getClassLoader()
+                .getResourceAsStream(pluginFolder + "/package.json"));
+        } else {
+            jsonString = FileUtils.readFileToString(pluginPackageJson, UTF_8);
+        }
+        final JsonObject json = Json.parse(jsonString);
+        return json;
+    }
+
     /**
      * Updates the local hash to node_modules.
      * <p>
