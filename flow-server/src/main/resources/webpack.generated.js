@@ -42,14 +42,8 @@ const projectStaticAssetsFolders = [
   path.resolve(__dirname, 'src', 'main', 'resources', 'static'),
   frontendFolder
 ];
-// FIXME This is not always correct
-const projectStaticAssetsOutputFolder = path.resolve(
-  __dirname,
-  'target',
-  'classes',
-  'META-INF',
-  'resources'
-);
+
+const projectStaticAssetsOutputFolder = [to-be-generated-by-flow];
 
 // Folders in the project which can contain application themes
 const themeProjectFolders = projectStaticAssetsFolders.map((folder) =>
