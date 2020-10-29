@@ -86,7 +86,8 @@ public class StaticFileServer implements StaticFileHandler {
             return false;
         }
 
-        if (requestFilename.startsWith("/VAADIN/")) {
+        if (requestFilename.startsWith("/" + VAADIN_STATIC_FILES_PATH)
+                || requestFilename.startsWith("/" + VAADIN_BUILD_FILES_PATH)) {
             // The path is reserved for internal resources only
             // We rather serve 404 than let it fall through
             return true;
