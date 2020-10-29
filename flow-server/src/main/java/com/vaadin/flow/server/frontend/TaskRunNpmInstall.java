@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -130,8 +131,52 @@ public class TaskRunNpmInstall implements FallibleCommand {
                     Constants.PACKAGE_JSON);
 
         }
+        try {
+            generatePluginFiles("stats-plugin", new FrontendVersion("1.0.0"));
+            generatePluginFiles("application-theme-plugin", new FrontendVersion("1.0.0"));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
+    private URL getUrlResource(String resource) {
+        return this.getClass().getClassLoader().getResource(resource);
+    }
+
+    private void generatePluginFiles(String pluginName, FrontendVersion pluginVersion)
+        throws IOException {
+        File pluginFolder = new File(packageUpdater.nodeModulesFolder,
+            "@vaadin/" + pluginName);
+        if (pluginFolder.exists() && new File(pluginFolder, "package.json")
+            .exists()) {
+            String packageFile = FileUtils
+                .readFileToString(new File(pluginFolder, "package.json"),
+                    StandardCharsets.UTF_8);
+            final FrontendVersion packageVersion = new FrontendVersion(
+                Json.parse(packageFile).getString("version"));
+            if (packageVersion.isEqualTo(pluginVersion)) {
+                packageUpdater.log().debug(
+                    "Skiping install of {} for version {} already installed",
+                    pluginName, pluginVersion.getFullVersion());
+                return;
+            }
+        }
+        FileUtils.forceMkdir(pluginFolder);
+
+        FileUtils.copyURLToFile( getUrlResource(pluginName + ".js"), new File(pluginFolder, pluginName + ".js"));
+
+        FileUtils.copyURLToFile(
+            getUrlResource("plugin-package-json.template"),
+            new File(pluginFolder, "package.json"));
+
+        String packageFile = FileUtils.readFileToString(new File(pluginFolder, "package.json"), StandardCharsets.UTF_8);
+
+        packageFile = packageFile.replaceAll("\\[plugin\\-name\\]", pluginName);
+        packageFile = packageFile.replaceAll("\\[plugin\\-version\\]", pluginVersion.getFullVersion());
+
+        FileUtils.writeStringToFile(new File(pluginFolder, "package.json"), packageFile,
+            StandardCharsets.UTF_8);
+    }
     /**
      * Updates the local hash to node_modules.
      * <p>
