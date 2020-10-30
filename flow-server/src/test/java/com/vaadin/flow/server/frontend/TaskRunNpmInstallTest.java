@@ -38,8 +38,8 @@ import com.vaadin.flow.server.frontend.scanner.ClassFinder;
 import com.vaadin.flow.server.frontend.scanner.FrontendDependencies;
 
 import elemental.json.Json;
+import elemental.json.JsonArray;
 import elemental.json.JsonObject;
-
 import static com.vaadin.flow.server.frontend.NodeUpdater.DEPENDENCIES;
 import static com.vaadin.flow.server.frontend.NodeUpdater.DEV_DEPENDENCIES;
 import static com.vaadin.flow.server.frontend.NodeUpdater.HASH_KEY;
@@ -69,7 +69,7 @@ public class TaskRunNpmInstallTest {
 
     @Before
     public void setUp() throws IOException {
-        File generatedFolder = temporaryFolder.newFolder();
+        generatedFolder = temporaryFolder.newFolder();
         npmFolder = temporaryFolder.newFolder();
         nodeUpdater = new NodeUpdater(Mockito.mock(ClassFinder.class),
                 Mockito.mock(FrontendDependencies.class), npmFolder,
@@ -217,7 +217,7 @@ public class TaskRunNpmInstallTest {
     }
 
     @Test
-    public void runNpmInstall_dirContainsOnlyFlowNpmPackage_npmInstallIsNotExecuted()
+    public void runNpmInstall_dirContainsOnlyFlowNpmPackage_npmInstallIsExecuted()
             throws ExecutionFailedException {
         File nodeModules = getNodeUpdater().nodeModulesFolder;
         nodeModules.mkdir();
@@ -235,6 +235,70 @@ public class TaskRunNpmInstallTest {
         task.execute();
 
         Mockito.verify(logger).info(getRunningMsg());
+    }
+
+    @Test
+    public void runNpmInstall_modified_webpackPluginsAreCopied()
+        throws ExecutionFailedException, IOException {
+        nodeUpdater.modified = true;
+        task.execute();
+
+        Mockito.verify(logger).info(getRunningMsg());
+
+        assertPlugins();
+    }
+
+
+    @Test
+    public void runNpmInstall_notModifiedNoNpmInstall_webpackPluginsAreCopied()
+        throws ExecutionFailedException, IOException {
+        File nodeModules = getNodeUpdater().nodeModulesFolder;
+        nodeModules.mkdir();
+
+        new File(nodeModules, "foo").createNewFile();
+
+        writeLocalHash("");
+        nodeUpdater.modified = false;
+        task.execute();
+
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+        Mockito.verify(logger).info(captor.capture(),
+            Mockito.matches(getToolName()),
+            Mockito.matches(nodeModules.getAbsolutePath().replaceAll("\\\\", "\\\\\\\\")), Mockito.any(),
+            Mockito.matches(Constants.PACKAGE_JSON));
+        Assert.assertEquals(
+            "Skipping `{} install` because the frontend packages are already installed in the folder '{}' and the hash in the file '{}' is the same as in '{}'",
+            captor.getValue());
+
+        assertPlugins();
+    }
+
+    private void assertPlugins() throws IOException {
+        Assert.assertTrue("No @vaadin folder created",
+            new File(getNodeUpdater().nodeModulesFolder, "@vaadin").exists());
+
+        assertPlugin("application-theme-plugin");
+        assertPlugin("stats-plugin");
+    }
+
+    private void assertPlugin(String plugin) throws IOException {
+        final String pluginString = "@vaadin" + File.separator + plugin;
+        final File pluginFolder = new File(getNodeUpdater().nodeModulesFolder,
+            pluginString);
+
+        Assert.assertTrue("Missing plugin folder for " + plugin,
+            pluginFolder.exists());
+        Assert.assertTrue("Missing package.json for " + plugin,
+            new File(pluginFolder, "package.json").exists());
+
+        final JsonObject packageJson = Json.parse(FileUtils
+            .readFileToString(new File(pluginFolder, "package.json"), UTF_8));
+        final JsonArray files = packageJson.getArray("files");
+        for (int i = 0; i < files.length(); i++) {
+            Assert.assertTrue(
+                "Missing plugin file " + files.getString(i) + " for " + plugin,
+                new File(pluginFolder, files.getString(i)).exists());
+        }
     }
 
     @Test
