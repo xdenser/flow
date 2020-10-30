@@ -116,7 +116,7 @@ public class StaticFileServer implements StaticFileHandler {
         }
 
         URL resourceUrl = null;
-        if (isAllowedVAADINUrl(filenameWithPath)) {
+        if (isAllowedVAADINBuildUrl(filenameWithPath)) {
             resourceUrl = servletService.getClassLoader()
                     .getResource("META-INF" + filenameWithPath);
         }
@@ -212,16 +212,9 @@ public class StaticFileServer implements StaticFileHandler {
      *            requested filename containing path
      * @return true if we are ok to try serving the file
      */
-    private boolean isAllowedVAADINUrl(String filenameWithPath) {
+    private boolean isAllowedVAADINBuildUrl(String filenameWithPath) {
         // Check that we target VAADIN/build
-        if (filenameWithPath.startsWith("/" + VAADIN_BUILD_FILES_PATH)) {
-            return true;
-        }
-        // FIXME Hack to enable serving fonts that css-loader/file-loader generates for e.g. Font Awesome
-        if (filenameWithPath.matches("^/VAADIN/([a-z0-9]+)\\.(svg|eot|woff|woff2|ttf)$")) {
-            return true;
-        }
-        return false;
+        return filenameWithPath.startsWith("/" + VAADIN_BUILD_FILES_PATH);
     }
 
     /**
