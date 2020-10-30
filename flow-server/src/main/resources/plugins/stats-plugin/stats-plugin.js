@@ -15,6 +15,8 @@
  */
 
 const fs = require('fs');
+const mkdirp = require('mkdirp');
+const path = require('path');
 
 /**
  * This plugin handles minimization of the stats.json file to only contain required info to keep
@@ -30,6 +32,8 @@ class StatsPlugin {
     }
 
     apply(compiler) {
+        const logger = compiler.getInfrastructureLogger("FlowIdPlugin");
+
         compiler.hooks.afterEmit.tapAsync("FlowIdPlugin", (compilation, done) => {
             let statsJson = compilation.getStats().toJson();
             // Get bundles as accepted keys
@@ -52,6 +56,7 @@ class StatsPlugin {
             if (!this.options.devMode) {
                 // eslint-disable-next-line no-console
                 console.log("         Emitted " + this.options.statsFile);
+                mkdirp(path.dirname(this.options.statsFile));
                 fs.writeFile(this.options.statsFile, JSON.stringify(customStats, null, 1), done);
             } else {
                 // eslint-disable-next-line no-console

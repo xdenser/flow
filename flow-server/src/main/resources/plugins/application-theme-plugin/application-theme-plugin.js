@@ -19,6 +19,8 @@ const { compileFunction } = require("vm");
 const glob = require('glob');
 const path = require('path');
 const generateThemeFile = require('./theme-generator');
+const handleThemeFiles = require('./theme-copy');
+const { globalAgent } = require('http');
 
 let logger;
 
@@ -30,8 +32,9 @@ class ApplicationThemePlugin {
     apply(compiler) {
         logger = compiler.getInfrastructureLogger("application-theme-plugin");
 
-        compiler.hooks.run.tap("FlowApplicationThemePlugin", (compiler) => {
+        compiler.hooks.afterEnvironment.tap("FlowApplicationThemePlugin", () => {
             if (fs.existsSync(this.options.themeJarFolder)) {
+                logger.debug("Found themeFolder to handle ", this.options.themeJarFolder);
                 handleThemes(this.options.themeJarFolder, this.options.projectStaticAssetsOutputFolder);
             } else {
                 logger.warn('Theme JAR folder not found from ', this.options.themeJarFolder);
@@ -39,6 +42,7 @@ class ApplicationThemePlugin {
 
             this.options.themeProjectFolders.forEach((themeProjectFolder) => {
                 if (fs.existsSync(themeProjectFolder)) {
+                    logger.debug("Found themeFolder to handle ", themeProjectFolder);
                     handleThemes(themeProjectFolder, this.options.projectStaticAssetsOutputFolder);
                 }
             });
@@ -57,8 +61,8 @@ function getThemeProperties(themeFolder) {
 };
 
 function handleThemes(themesFolder, projectStaticAssetsOutputFolder) {
-    logger.info("handling theme from ", themesFolder);
     const dir = fs.opendirSync(themesFolder);
+    let string = [];
     while ((dirent = dir.readSync())) {
         if (!dirent.isDirectory()) {
             continue;
@@ -66,18 +70,29 @@ function handleThemes(themesFolder, projectStaticAssetsOutputFolder) {
         const themeName = dirent.name;
         const themeFolder = path.resolve(themesFolder, themeName);
         const themeProperties = getThemeProperties(themeFolder);
-        logger.info("Found theme ", themeName, " in folder ", themeFolder);
+        logger.debug("Found theme ", themeName, " in folder ", themeFolder);
+
+        handleThemeFiles(themeName, themeFolder, projectStaticAssetsOutputFolder);
 
         copyStaticAssets(themeProperties, projectStaticAssetsOutputFolder);
+
         const themeFile = generateThemeFile(
           themeFolder,
           themeName,
           themeProperties
         );
+        
         fs.writeFileSync(path.resolve(themeFolder, themeName + '.js'), themeFile);
     }
 };
 
+/**
+ * Copy any static node_modules assets marked in theme.json to 
+ * project static assets folder.
+ * 
+ * @param {json} themeProperties 
+ * @param {path} projectStaticAssetsOutputFolder 
+ */
 function copyStaticAssets(themeProperties, projectStaticAssetsOutputFolder) {
 
     const assets = themeProperties.assets;
