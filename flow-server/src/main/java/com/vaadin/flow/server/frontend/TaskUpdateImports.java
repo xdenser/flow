@@ -131,7 +131,7 @@ public class TaskUpdateImports extends NodeUpdater {
         @Override
         protected Collection<String> getThemeLines() {
             ThemeDefinition themeDef = getThemeDefinition();
-            String themeName = getThemeDefinition().getName();
+            String themeName = themeDef.getName();
             Collection<String> lines = new ArrayList<>();
 
             if (!themeName.equals("")) {

@@ -18,9 +18,14 @@ package com.vaadin.flow.server.frontend;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import net.jcip.annotations.NotThreadSafe;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -282,6 +287,53 @@ public class TaskRunNpmInstallTest {
     }
 
     private void assertPlugin(String plugin) throws IOException {
+        final File pluginFolder = getPluginFolder(plugin);
+
+        final JsonArray files = getPluginFiles(pluginFolder);
+        for (int i = 0; i < files.length(); i++) {
+            Assert.assertTrue(
+                "Missing plugin file " + files.getString(i) + " for " + plugin,
+                new File(pluginFolder, files.getString(i)).exists());
+        }
+    }
+
+    @Test
+    public void pluginsDefineAllScriptFiles() throws IOException {
+        verifyPluginScriptFilesAreDefined("application-theme-plugin");
+        verifyPluginScriptFilesAreDefined("stats-plugin");
+    }
+
+    private void verifyPluginScriptFilesAreDefined(String plugin)
+        throws IOException {
+        final File pluginFolder = new File(
+            this.getClass().getClassLoader().getResource("plugins/" + plugin)
+                .getFile());
+
+        final JsonArray files = getPluginFiles(pluginFolder);
+        List<String> fileNames = new ArrayList<>(files.length());
+        for (int i = 0; i < files.length(); i++) {
+            Assert.assertTrue(
+                "Missing plugin file " + files.getString(i) + " for " + plugin,
+                new File(pluginFolder, files.getString(i)).exists());
+            fileNames.add(files.getString(i));
+        }
+        final List<String> pluginFiles = Arrays.stream(pluginFolder.listFiles(
+            (dir, name) -> FilenameUtils.getExtension(name).equals("js")))
+            .map(file -> file.getName()).collect(Collectors.toList());
+        for (String fileName : pluginFiles) {
+            Assert.assertTrue(String
+                .format("Plugin '%s' doesn't define script file '%s' in package.json files",
+                    plugin, fileName), fileNames.contains(fileName));
+        }
+    }
+
+    private JsonArray getPluginFiles(File pluginFolder) throws IOException {
+        final JsonObject packageJson = Json.parse(FileUtils
+            .readFileToString(new File(pluginFolder, "package.json"), UTF_8));
+        return packageJson.getArray("files");
+    }
+
+    private File getPluginFolder(String plugin) {
         final String pluginString = "@vaadin" + File.separator + plugin;
         final File pluginFolder = new File(getNodeUpdater().nodeModulesFolder,
             pluginString);
@@ -290,15 +342,7 @@ public class TaskRunNpmInstallTest {
             pluginFolder.exists());
         Assert.assertTrue("Missing package.json for " + plugin,
             new File(pluginFolder, "package.json").exists());
-
-        final JsonObject packageJson = Json.parse(FileUtils
-            .readFileToString(new File(pluginFolder, "package.json"), UTF_8));
-        final JsonArray files = packageJson.getArray("files");
-        for (int i = 0; i < files.length(); i++) {
-            Assert.assertTrue(
-                "Missing plugin file " + files.getString(i) + " for " + plugin,
-                new File(pluginFolder, files.getString(i)).exists());
-        }
+        return pluginFolder;
     }
 
     @Test
