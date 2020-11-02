@@ -48,7 +48,6 @@ import com.vaadin.flow.server.UIInitListener;
 import com.vaadin.flow.server.VaadinServiceInitListener;
 import com.vaadin.flow.theme.AbstractTheme;
 import com.vaadin.flow.theme.NoTheme;
-import com.vaadin.flow.theme.Theme;
 import com.vaadin.flow.theme.ThemeDefinition;
 
 import static com.vaadin.flow.server.frontend.scanner.FrontendClassVisitor.VALUE;
@@ -97,7 +96,8 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
                 "Scanning classes to find frontend configurations and dependencies...");
         long start = System.nanoTime();
         try {
-            computeEndpointsAndAppShell();
+            computeEndpoints();
+            computeAppShell();
             if (generateEmbeddableWebComponents) {
                 computeExporterEndpoints(WebComponentExporter.class);
                 computeExporterEndpoints(WebComponentExporterFactory.class);
@@ -221,7 +221,7 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
      * @throws ClassNotFoundException
      * @throws IOException
      */
-    private void computeEndpointsAndAppShell() throws ClassNotFoundException, IOException {
+    private void computeEndpoints() throws ClassNotFoundException, IOException {
         // Because of different classLoaders we need compare against class
         // references loaded by the specific class finder loader
         Class<? extends Annotation> routeClass = getFinder()
@@ -244,11 +244,22 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
                 getFinder().loadClass(HasErrorParameter.class.getName()))) {
             collectEndpoints(errorParameters);
         }
-        for (Class<?> appShell : getFinder()
-                .getSubTypesOf(getFinder().loadClass(AppShellConfigurator.class.getName()))) {
+    }
+
+    /**
+     * Find the AppShellConfigurator class implementation.
+     *
+     * @throws ClassNotFoundException
+     *     when AppShellConfigurator.class is not in the classpath
+     */
+    private void computeAppShell() throws ClassNotFoundException {
+        for (Class<?> appShell : getFinder().getSubTypesOf(
+            getFinder().loadClass(AppShellConfigurator.class.getName()))) {
             if (this.appShellConfigurator != null) {
-                throw new IllegalStateException("Only one class can implement " + AppShellConfigurator.class.getName()
-                        + ". Found " + this.appShellConfigurator.getName() + " and " + appShell.getName());
+                throw new IllegalStateException(
+                    "Only one class can implement " + AppShellConfigurator.class
+                        .getName() + ". Found " + this.appShellConfigurator
+                        .getName() + " and " + appShell.getName());
             }
             this.appShellConfigurator = appShell;
         }
@@ -269,7 +280,8 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
      * found in the class-path
      */
     private void computeTheme()
-            throws ClassNotFoundException, InstantiationException, IllegalAccessException, IOException {
+        throws ClassNotFoundException, InstantiationException,
+        IllegalAccessException, IOException {
         EndPointData appShellData = null;
         // Re-visit theme related classes, because they might be skipped
         // when they where already added to the visited list during other
@@ -295,26 +307,25 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
         }
 
         Set<ThemeData> themes = candidates
-                // consider only endPoints with theme information
-                .filter(data -> data.getTheme().getThemeClass() != null || data.getTheme().getThemeName() != null
-                        || data.getTheme().isNotheme())
-                .map(EndPointData::getTheme)
-                // Remove duplicates by returning a set
-                .collect(Collectors.toSet());
+            // consider only endPoints with theme information
+            .filter(data -> data.getTheme().getThemeClass() != null
+                || data.getTheme().getThemeName() != null || data.getTheme()
+                .isNotheme()).map(EndPointData::getTheme)
+            // Remove duplicates by returning a set
+            .collect(Collectors.toSet());
 
         if (themes.size() > 1) {
-            String names = endPoints.values().stream()
-                    .filter(data -> data.getTheme().getThemeClass() != null || data.getTheme().getThemeName() != null
-                            || data.getTheme().isNotheme())
-                    .map(data -> "found '"
-                            + (data.getTheme().isNotheme()
-                                    ? NoTheme.class.getName()
-                                    : data.getTheme().getThemeName())
-                            + "' in '" + data.getName() + "'")
-                    .collect(Collectors.joining("\n      "));
+            String names = endPoints.values().stream().filter(
+                data -> data.getTheme().getThemeClass() != null
+                    || data.getTheme().getThemeName() != null || data.getTheme()
+                    .isNotheme()).map(
+                data -> "found '" + (data.getTheme().isNotheme() ?
+                    NoTheme.class.getName() :
+                    data.getTheme().getThemeName()) + "' in '" + data.getName()
+                    + "'").collect(Collectors.joining("\n      "));
             throw new IllegalStateException(
-                    "\n Multiple Theme configuration is not supported:\n      "
-                            + names);
+                "\n Multiple Theme configuration is not supported:\n      "
+                    + names);
         }
 
         Class<? extends AbstractTheme> theme = null;
@@ -538,5 +549,4 @@ public class FrontendDependencies extends AbstractDependenciesScanner {
     public String toString() {
         return endPoints.toString();
     }
-
 }

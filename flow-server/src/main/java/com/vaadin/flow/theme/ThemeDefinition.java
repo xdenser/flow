@@ -80,6 +80,11 @@ public class ThemeDefinition implements Serializable {
         return variant;
     }
 
+    /**
+     * Gets the name of the theme.
+     *
+     * @return name of the theme
+     */
     public String getName() {
         return name;
     }

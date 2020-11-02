@@ -239,6 +239,7 @@ public final class Constants implements Serializable {
      * Location for the frontend resources in jar files.
      */
     public static final String RESOURCES_FRONTEND_DEFAULT = "META-INF/frontend";
+
     /**
      * Location for the theme resources in jar files.
      */

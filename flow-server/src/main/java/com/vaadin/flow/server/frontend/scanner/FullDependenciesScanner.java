@@ -119,6 +119,7 @@ class FullDependenciesScanner extends AbstractDependenciesScanner {
         cssData = discoverCss();
 
         discoverTheme();
+
         modules = calculateModules(regularModules, themeModules);
         getLogger().info("Visited {} classes. Took {} ms.", getClasses().size(),
                 System.currentTimeMillis() - start);

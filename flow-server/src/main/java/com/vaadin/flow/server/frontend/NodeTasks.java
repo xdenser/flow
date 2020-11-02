@@ -30,7 +30,6 @@ import com.vaadin.flow.server.frontend.scanner.ClassFinder;
 import com.vaadin.flow.server.frontend.scanner.FrontendDependenciesScanner;
 
 import elemental.json.JsonObject;
-
 import static com.vaadin.flow.server.frontend.FrontendUtils.DEFAULT_FRONTEND_DIR;
 import static com.vaadin.flow.server.frontend.FrontendUtils.DEFAULT_GENERATED_DIR;
 import static com.vaadin.flow.server.frontend.FrontendUtils.IMPORTS_NAME;
@@ -575,7 +574,10 @@ public class NodeTasks implements FallibleCommand {
                             builder.npmFolder, builder.generatedFolder,
                             builder.frontendDirectory, builder.tokenFile,
                             builder.tokenFileData, builder.enablePnpm));
-            commands.add(new TaskUpdateThemeImport(builder.npmFolder, builder.generatedFolder, frontendDependencies.getThemeDefinition()));
+
+            commands.add(new TaskUpdateThemeImport(builder.npmFolder,
+                builder.generatedFolder,
+                frontendDependencies.getThemeDefinition()));
         }
     }
 

@@ -168,6 +168,7 @@ public class WebComponentGenerator {
         replacements.put("TagDash", tag);
         replacements.put("TagCamel", SharedUtil
                 .capitalize(SharedUtil.dashSeparatedToCamelCase(tag)));
+
         replacements.put("AttributeChange", getAttributeChange(
                 getStringResource(CODE_ATTRIBUTE_CHANGE), propertyDataSet));
         replacements.put("PropertyMethods", getPropertyMethods(
