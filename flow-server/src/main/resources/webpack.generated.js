@@ -194,6 +194,7 @@ module.exports = {
         ],
       },
       {
+        // File-loader only copies files used as imports in .js files
         test: /\.(png|gif|jpg|svg|eot|woff|woff2|ttf)$/,
         use: ['file-loader'],
       },
