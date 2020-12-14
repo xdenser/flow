@@ -61,8 +61,12 @@ function generateThemeFile(themeFolder, themeName, themeProperties) {
 
   let themeFile = headerImport;
 
-  if(componentsFiles.length > 0){
-    themeFile += 'import { css, unsafeCSS, registerStyles } from \'@vaadin/vaadin-themable-mixin/register-styles\';';
+  if (componentsFiles.length > 0) {
+    themeFile += 'import { css, unsafeCSS, registerStyles } from \'@vaadin/vaadin-themable-mixin/register-styles\';\n';
+  }
+
+  if (themeProperties.parent) {
+    themeFile += `import {applyTheme as applyBaseTheme} from 'themes/${themeProperties.parent}/${themeProperties.parent}.generated.js';`;
   }
 
   themeFile += injectGlobalCssMethod;
@@ -70,12 +74,12 @@ function generateThemeFile(themeFolder, themeName, themeProperties) {
   const imports = [];
   const globalCssCode = [];
   const componentCssCode = [];
-
+  const parentTheme = themeProperties.parent ? 'applyBaseTheme(target);\n' : '';
   globalFiles.forEach((global) => {
     const filename = path.basename(global);
     const variable = camelCase(filename);
     imports.push(`import ${variable} from './${filename}';\n`);
-    if (filename == themeFileAlwaysAddToDocument) {
+    if (filename === themeFileAlwaysAddToDocument) {
       globalCssCode.push(`injectGlobalCss(${variable}.toString(), document);\n   `);
     } else {
       globalCssCode.push(`injectGlobalCss(${variable}.toString(), target);\n    `);
@@ -85,7 +89,7 @@ function generateThemeFile(themeFolder, themeName, themeProperties) {
   let i = 0;
   if (themeProperties.importCss) {
     const missingModules = checkModules(themeProperties.importCss);
-    if(missingModules.length > 0) {
+    if (missingModules.length > 0) {
       throw Error("Missing npm modules or files '" + missingModules.join("', '")
         + "' for importCss marked in 'theme.json'.\n" +
         "Install or update package(s) by adding a @NpmPackage annotation or install it using 'npm/pnpm i'");
@@ -125,6 +129,7 @@ function generateThemeFile(themeFolder, themeName, themeProperties) {
 // Don't format as the generated file formatting will get wonky!
 // If targets check that we only register the style parts once, checks exist for global css and component css
   const themeFileApply = `export const applyTheme = (target) => {
+  ${parentTheme}
   if (!target['${globalCssFlag}']) {
     ${globalCssCode.join('')}
     target['${globalCssFlag}'] = true;
@@ -148,7 +153,7 @@ function generateThemeFile(themeFolder, themeName, themeProperties) {
  * @returns {string} camelCased version
  */
 function camelCase(str) {
-  return str.replace(/(?:^\w|[A-Z]|\b\w)/g, function(word, index) {
+  return str.replace(/(?:^\w|[A-Z]|\b\w)/g, function (word, index) {
     return index === 0 ? word.toLowerCase() : word.toUpperCase();
   }).replace(/\s+/g, '').replace(/\.|\-/g, '');
 }

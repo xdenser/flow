@@ -24,3 +24,7 @@ body {
     height: 224px;
     display: block;
 }
+
+#font-awesome {
+    margin: 5px;
+}
